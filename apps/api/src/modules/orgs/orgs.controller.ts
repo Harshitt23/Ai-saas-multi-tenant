@@ -64,6 +64,13 @@ export class OrgsController {
   }
 
   @UseGuards(TenantGuard, RbacGuard)
+  @RequirePermission('member:invite')
+  @Get(':orgSlug/invites')
+  invites(@CurrentOrg() orgId: string) {
+    return this.orgs.listInvites(orgId);
+  }
+
+  @UseGuards(TenantGuard, RbacGuard)
   @RequirePermission('member:update_role')
   @Patch(':orgSlug/members/:userId')
   updateRole(

@@ -1,8 +1,15 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
+import type { NotificationPrefsInput } from '@pm/types';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NOTIFICATIONS_QUEUE, type NotificationJob } from './notifications.constants';
+
+const PREF_SELECT = {
+  emailOnAssigned: true,
+  emailOnMentioned: true,
+  emailOnComment: true,
+} as const;
 
 /**
  * Producer side of notifications. Mutating services enqueue jobs here instead
@@ -49,5 +56,20 @@ export class NotificationsService {
       data: { readAt: new Date() },
     });
     return { count: res.count };
+  }
+
+  getPrefs(userId: string) {
+    return this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: PREF_SELECT,
+    });
+  }
+
+  updatePrefs(userId: string, prefs: NotificationPrefsInput) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: prefs,
+      select: PREF_SELECT,
+    });
   }
 }

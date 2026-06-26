@@ -80,4 +80,50 @@ export const api = {
     request<T>(path, { method: 'DELETE', orgSlug }),
 };
 
+export interface Attachment {
+  id: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+  downloadUrl: string;
+  createdAt: string;
+  uploader: { id: string; name: string; avatarUrl: string | null };
+}
+
+/**
+ * Three-step attachment upload: ask the API for a presigned PUT URL, upload the
+ * bytes straight to S3 (the API never touches the file), then confirm so the
+ * row is persisted. Returns the created attachment with a download URL.
+ */
+export async function uploadAttachment(
+  orgSlug: string,
+  issueId: string,
+  file: File,
+): Promise<Attachment> {
+  const base = `/orgs/${orgSlug}/issues/${issueId}/attachments`;
+  const { uploadUrl, fileKey } = await api.post<{ uploadUrl: string; fileKey: string }>(
+    `${base}/presign`,
+    { fileName: file.name, contentType: file.type || 'application/octet-stream', size: file.size },
+    orgSlug,
+  );
+
+  const put = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  });
+  if (!put.ok) throw new ApiError(put.status, 'Upload to storage failed');
+
+  return api.post<Attachment>(
+    base,
+    {
+      fileKey,
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      size: file.size,
+    },
+    orgSlug,
+  );
+}
+
 export { API_URL };

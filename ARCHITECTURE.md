@@ -126,11 +126,37 @@ plan and keeps working when Stripe isn't configured (local dev).
 - GitHub Actions: install → lint → typecheck → unit tests → `prisma migrate`
   check → build, with Postgres/Redis service containers.
 
-## 9. Known follow-ups (honest list)
+## 9. Follow-ups
 
-- Postgres RLS policies as the second isolation layer.
-- socket.io Redis adapter for multi-node presence/rooms.
-- Email delivery + user notification preferences.
-- File attachment upload via S3 presigned URLs (schema + bucket ready).
-- Playwright e2e suite and Sentry wiring.
-- Invite-by-email flow (currently add-existing-user + an `Invite` table).
+Delivered after the initial build:
+
+- **Postgres RLS** — `tenant_isolation` policies on every tenant table keyed on
+  `app.current_org_id` (GUC), `FORCE`d so the owner is subject to them, plus a
+  least-privilege `pm_app` role they apply to. Permissive when the GUC is unset,
+  so the app keeps working; `PrismaService.runWithTenant(orgId, …)` opts a
+  transaction into strict DB-level scoping. Verified: a mismatched org context
+  returns zero rows as `pm_app`. (Migrations `*_tenant_rls`, `*_app_role`.)
+- **socket.io Redis adapter** — `RedisIoAdapter` (installed via
+  `useWebSocketAdapter`) fans board broadcasts across API instances. Presence
+  rosters remain per-node (documented caveat).
+- **Email + notification prefs** — `MailService` (nodemailer; console transport
+  when `SMTP_URL` is empty). The notifications worker sends per type, gated by
+  per-user `emailOn*` prefs (`GET/PATCH /notifications/prefs`).
+- **S3 attachments** — presign → direct PUT → confirm flow under
+  `/orgs/:slug/issues/:id/attachments`; private bucket with short-lived
+  download URLs. Web: `uploadAttachment` + `useAttachments` hooks.
+- **Playwright e2e** — auth + board specs, own CI job (boots infra, seeds,
+  starts API, runs against a fresh web server).
+- **Sentry** — initialized when `SENTRY_DSN` is set; `SentryExceptionFilter`
+  reports 5xx and normalizes the error envelope.
+- **Invite-by-email** — tokened invites (hash stored, raw token emailed) +
+  `POST /invites/accept` with an email-match check.
+
+Remaining / production hardening:
+
+- Point the app's `DATABASE_URL` at `pm_app` and wrap mutations in
+  `runWithTenant` to make RLS enforcement always-on (currently opt-in; dev runs
+  as the superuser `pm`, which bypasses RLS).
+- Cross-node presence (move the in-memory roster into Redis).
+- Web UI surfaces for attachments/invites/prefs (API + hooks exist; no
+  dedicated issue-detail modal yet).

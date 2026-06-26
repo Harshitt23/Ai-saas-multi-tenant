@@ -7,14 +7,16 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
-    "@pm/types": "workspace:*",
-    "@tanstack/react-query": "^5.62.7",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^9.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@pm/types": "workspace:*",
+    "@tanstack/react-query": "^5.62.7",
     "next": "^14.2.21",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -22,14 +24,15 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.21",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.2",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "^14.2.21"
+    "typescript": "^5.7.2"
   }
 }

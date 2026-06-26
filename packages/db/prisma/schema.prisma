@@ -82,6 +82,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // Per-user email notification preferences (in-app rows are always written).
+  emailOnAssigned  Boolean @default(true)
+  emailOnMentioned Boolean @default(true)
+  emailOnComment   Boolean @default(true)
+
   memberships    Membership[]
   refreshTokens  RefreshToken[]
   reportedIssues Issue[]        @relation("IssueReporter")

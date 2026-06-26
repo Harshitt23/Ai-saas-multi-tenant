@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Patch, Query } from '@nestjs/common';
 import { z } from 'zod';
+import { notificationPrefsSchema } from '@pm/types';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser } from '../../common/decorators';
 import type { AuthUser } from '../../common/types/request';
@@ -27,5 +28,19 @@ export class NotificationsController {
   @Patch('read-all')
   markAllRead(@CurrentUser() user: AuthUser) {
     return this.notifications.markAllRead(user.sub);
+  }
+
+  @Get('prefs')
+  getPrefs(@CurrentUser() user: AuthUser) {
+    return this.notifications.getPrefs(user.sub);
+  }
+
+  @Patch('prefs')
+  updatePrefs(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(notificationPrefsSchema))
+    body: typeof notificationPrefsSchema._output,
+  ) {
+    return this.notifications.updatePrefs(user.sub, body);
   }
 }

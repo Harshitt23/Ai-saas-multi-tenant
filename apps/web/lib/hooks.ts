@@ -6,7 +6,7 @@ import type {
   IssueStatusValue,
   MoveIssueInput,
 } from '@pm/types';
-import { api } from './api';
+import { api, uploadAttachment, type Attachment } from './api';
 
 export interface Org {
   id: string;
@@ -92,5 +92,40 @@ export function useMoveIssue(orgSlug: string, projectKey: string) {
     },
 
     onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+// --- attachments ---------------------------------------------------------
+
+export const attachmentsKey = (orgSlug: string, issueId: string) => [
+  'attachments',
+  orgSlug,
+  issueId,
+];
+
+export const useAttachments = (orgSlug: string, issueId: string) =>
+  useQuery({
+    queryKey: attachmentsKey(orgSlug, issueId),
+    queryFn: () =>
+      api.get<Attachment[]>(`/orgs/${orgSlug}/issues/${issueId}/attachments`, orgSlug),
+    enabled: !!orgSlug && !!issueId,
+  });
+
+export function useUploadAttachment(orgSlug: string, issueId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => uploadAttachment(orgSlug, issueId, file),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: attachmentsKey(orgSlug, issueId) }),
+  });
+}
+
+export function useDeleteAttachment(orgSlug: string, issueId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.delete<void>(`/orgs/${orgSlug}/issues/${issueId}/attachments/${id}`, orgSlug),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: attachmentsKey(orgSlug, issueId) }),
   });
 }

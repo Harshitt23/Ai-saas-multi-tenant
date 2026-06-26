@@ -6,11 +6,14 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv, type Env } from './config/env';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { AuditModule } from './common/audit/audit.module';
+import { StorageModule } from './common/storage/storage.module';
+import { MailModule } from './common/mail/mail.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { OrgsModule } from './modules/orgs/orgs.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { IssuesModule } from './modules/issues/issues.module';
+import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { BillingModule } from './modules/billing/billing.module';
@@ -44,10 +47,13 @@ function parseRedis(url: string) {
     }),
     PrismaModule,
     AuditModule,
+    StorageModule,
+    MailModule,
     AuthModule,
     OrgsModule,
     ProjectsModule,
     IssuesModule,
+    AttachmentsModule,
     RealtimeModule,
     NotificationsModule,
     BillingModule,

@@ -36,8 +36,10 @@ type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, never, Socke
  * project room, and broadcasts mutations originating from the REST layer via
  * `emitToProject`.
  *
- * Presence is tracked in-memory per node; for horizontal scale add the
- * socket.io Redis adapter so rooms/presence span instances.
+ * The socket.io Redis adapter (installed via RedisIoAdapter in main.ts) fans
+ * room broadcasts out across every API instance, so `emitToProject` reaches
+ * clients connected to other nodes. Presence below is still tracked in-memory
+ * per node — see the note on `addPresence` for the cross-node caveat.
  */
 @WebSocketGateway({
   cors: { origin: true, credentials: true },
@@ -157,6 +159,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   // --- presence helpers --------------------------------------------------
+  // NOTE: presence lives in this node's memory. With the Redis adapter, board
+  // *broadcasts* span nodes, but a presence roster reflects only locally
+  // connected sockets. Full cross-node presence would move this map into Redis
+  // (e.g. a per-room hash with socket TTLs); deferred as it's not needed yet.
   private addPresence(room: string, user: PresenceUser): void {
     const map = this.presence.get(room) ?? new Map();
     const existing = map.get(user.userId);

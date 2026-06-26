@@ -128,3 +128,47 @@ export const createCommentSchema = z.object({
   mentionIds: z.array(z.string().cuid()).optional(),
 });
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
+
+// ---------------------------------------------------------------------------
+// Attachments (S3 presigned upload)
+// ---------------------------------------------------------------------------
+
+// 25 MB cap — adjust per plan. Mirrored client-side for early feedback.
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
+// Step 1: client asks the API for a presigned PUT URL to upload directly to S3.
+export const presignAttachmentSchema = z.object({
+  fileName: z.string().min(1).max(255),
+  contentType: z.string().min(1).max(255),
+  size: z.number().int().positive().max(MAX_ATTACHMENT_BYTES),
+});
+export type PresignAttachmentInput = z.infer<typeof presignAttachmentSchema>;
+
+// Step 2: after a successful upload the client confirms, creating the DB row.
+export const confirmAttachmentSchema = z.object({
+  fileKey: z.string().min(1).max(1024),
+  fileName: z.string().min(1).max(255),
+  contentType: z.string().min(1).max(255),
+  size: z.number().int().positive().max(MAX_ATTACHMENT_BYTES),
+});
+export type ConfirmAttachmentInput = z.infer<typeof confirmAttachmentSchema>;
+
+// ---------------------------------------------------------------------------
+// Invites (invite-by-email)
+// ---------------------------------------------------------------------------
+
+export const acceptInviteSchema = z.object({
+  token: z.string().min(10).max(200),
+});
+export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
+
+// ---------------------------------------------------------------------------
+// Notification preferences
+// ---------------------------------------------------------------------------
+
+export const notificationPrefsSchema = z.object({
+  emailOnAssigned: z.boolean().optional(),
+  emailOnMentioned: z.boolean().optional(),
+  emailOnComment: z.boolean().optional(),
+});
+export type NotificationPrefsInput = z.infer<typeof notificationPrefsSchema>;

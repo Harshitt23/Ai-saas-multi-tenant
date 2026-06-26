@@ -31,6 +31,11 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
 
   SENTRY_DSN: z.string().default(''),
+
+  // Email. When SMTP_URL is empty we use a console transport (logs the message
+  // instead of sending) so local dev needs no mail server.
+  SMTP_URL: z.string().default(''),
+  MAIL_FROM: z.string().default('PM SaaS <no-reply@pm.local>'),
 });
 
 export type Env = z.infer<typeof envSchema>;
