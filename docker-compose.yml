@@ -9,7 +9,8 @@ services:
       POSTGRES_PASSWORD: pm
       POSTGRES_DB: pm
     ports:
-      - "5432:5432"
+      # Host 5433 (5432 is taken by another local project's container).
+      - "5433:5432"
     volumes:
       - ./.data/postgres:/var/lib/postgresql/data
     healthcheck:

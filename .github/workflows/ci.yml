@@ -40,9 +40,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` here on purpose — action-setup reads it from the
+      # `packageManager` field in package.json (pnpm@11.9.0), so the version
+      # is declared in exactly one place. Pinning it here too errors with
+      # "Multiple versions of pnpm specified".
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
