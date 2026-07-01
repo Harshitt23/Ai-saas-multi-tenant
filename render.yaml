@@ -18,7 +18,7 @@ services:
     # Render's Linux runtime, then compile the API. pnpm ships pre-installed on
     # Render's image (do NOT `corepack enable` — /usr/bin is read-only); pnpm
     # self-provisions the packageManager-pinned version into a writable cache.
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @pm/db generate && pnpm --filter @pm/db build && pnpm --filter @pm/api build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @pm/types build && pnpm --filter @pm/db generate && pnpm --filter @pm/db build && pnpm --filter @pm/api build
     # Apply any pending migrations (idempotent) then boot. `migrate deploy`
     # never generates or resets — safe to run on every cold start.
     startCommand: pnpm --filter @pm/db exec prisma migrate deploy && node apps/api/dist/main.js
