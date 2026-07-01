@@ -9,7 +9,9 @@
 --
 -- To activate in any environment, point the app's DATABASE_URL at pm_app while
 -- keeping migrations on the owner connection, e.g.:
---   DATABASE_URL="postgresql://pm_app:pm_app@localhost:5433/pm?schema=public"
+--   DATABASE_URL="postgresql://pm_app:PmApp_Str0ng!2026@localhost:5433/pm?schema=public"
+-- (Managed Postgres such as Neon enforces a password-strength policy on
+-- CREATE ROLE, so the literal below is intentionally non-trivial.)
 -- Then queries wrapped in PrismaService.runWithTenant(orgId, ...) are strictly
 -- scoped at the database; unscoped queries remain permitted (permissive-unset).
 -- ============================================================================
@@ -17,7 +19,7 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'pm_app') THEN
-    CREATE ROLE pm_app LOGIN PASSWORD 'pm_app' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+    CREATE ROLE pm_app LOGIN PASSWORD 'PmApp_Str0ng!2026' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
   END IF;
 END $$;
 
