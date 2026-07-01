@@ -35,12 +35,24 @@ export class AuthController {
     };
   }
 
+  // Path must match where the browser calls refresh/logout: the API mounts auth
+  // under the global `api` prefix, so the endpoints are `/api/auth/*`. A cookie
+  // scoped to `/auth` would never be sent. In production the web app and API sit
+  // on different origins (Vercel vs Render), so the refresh cookie is
+  // cross-site: it needs `SameSite=None; Secure` to be sent at all.
+  private refreshCookieOptions() {
+    const isProd = this.config.get('NODE_ENV', { infer: true }) === 'production';
+    return {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? ('none' as const) : ('lax' as const),
+      path: '/api/auth',
+    };
+  }
+
   private setRefreshCookie(res: Response, tokens: IssuedTokens): void {
     res.cookie(REFRESH_COOKIE, tokens.refreshToken, {
-      httpOnly: true,
-      secure: this.config.get('NODE_ENV', { infer: true }) === 'production',
-      sameSite: 'lax',
-      path: '/auth',
+      ...this.refreshCookieOptions(),
       expires: tokens.refreshExpiresAt,
     });
   }
@@ -88,7 +100,7 @@ export class AuthController {
   @HttpCode(204)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.auth.logout(req.cookies?.[REFRESH_COOKIE]);
-    res.clearCookie(REFRESH_COOKIE, { path: '/auth' });
+    res.clearCookie(REFRESH_COOKIE, this.refreshCookieOptions());
   }
 
   @Get('me')

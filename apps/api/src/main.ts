@@ -40,6 +40,12 @@ async function bootstrap() {
   app.use(helmet());
   app.use(cookieParser());
 
+  // Behind Render/Vercel's TLS-terminating proxy: trust the first hop so
+  // `req.secure`/`req.ip` reflect the real client and `Secure` cookies stick.
+  if (config.get('NODE_ENV', { infer: true }) === 'production') {
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  }
+
   // `rawBody: true` (above) makes Nest's body parsers expose `req.rawBody` on
   // every route, which the Stripe webhook uses for signature verification —
   // no extra body-parser middleware needed (a manual one shadows the global
@@ -54,9 +60,12 @@ async function bootstrap() {
   // so no global class-validator ValidationPipe is registered.
   app.enableShutdownHooks();
 
-  const port = config.get('API_PORT', { infer: true });
-  await app.listen(port);
-  logger.log(`API listening on http://localhost:${port}/api`);
+  // Render (and most PaaS) inject the port to bind on via $PORT; fall back to
+  // the configured API_PORT for local dev. Bind 0.0.0.0 so the platform proxy
+  // can reach the container.
+  const port = Number(process.env.PORT) || config.get('API_PORT', { infer: true });
+  await app.listen(port, '0.0.0.0');
+  logger.log(`API listening on port ${port} (prefix /api)`);
 }
 
 void bootstrap();

@@ -26,6 +26,11 @@ function parseRedis(url: string) {
     port: Number(u.port || 6379),
     ...(u.password ? { password: u.password } : {}),
     ...(u.username ? { username: u.username } : {}),
+    // Managed Redis (Upstash, etc.) uses the `rediss://` TLS scheme; ioredis
+    // only negotiates TLS when given a `tls` option, so map the scheme to it.
+    ...(u.protocol === 'rediss:' ? { tls: {} } : {}),
+    // BullMQ requires blocking clients to disable the per-request retry cap.
+    maxRetriesPerRequest: null,
   };
 }
 
