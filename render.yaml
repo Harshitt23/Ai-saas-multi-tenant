@@ -15,8 +15,10 @@ services:
     region: oregon
     branch: main
     # Build the shared db/types packages, generate the Prisma client for
-    # Render's Linux runtime, then compile the API.
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @pm/db generate && pnpm --filter @pm/db build && pnpm --filter @pm/api build
+    # Render's Linux runtime, then compile the API. pnpm ships pre-installed on
+    # Render's image (do NOT `corepack enable` — /usr/bin is read-only); pnpm
+    # self-provisions the packageManager-pinned version into a writable cache.
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @pm/db generate && pnpm --filter @pm/db build && pnpm --filter @pm/api build
     # Apply any pending migrations (idempotent) then boot. `migrate deploy`
     # never generates or resets — safe to run on every cold start.
     startCommand: pnpm --filter @pm/db exec prisma migrate deploy && node apps/api/dist/main.js
@@ -24,6 +26,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Pin to Node 22 LTS — the `>=20` engines range otherwise resolves to the
+      # newest release (26), which can break native deps (Prisma, bcrypt).
+      - key: NODE_VERSION
+        value: "22.11.0"
       # Secrets — set in the dashboard (Neon / Upstash / R2). Never committed.
       - key: DATABASE_URL
         sync: false
