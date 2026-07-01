@@ -212,9 +212,7 @@ function Card({
       <p className="text-zinc-100">{issue.title}</p>
       <div className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-500">
         <span className={`inline-block h-2 w-2 rounded-full ${dot}`} />
-        <span>#{issue.number}</span>
-        <span>·</span>
-        <span>{issue.priority}</span>
+        <span>{`#${issue.number} · ${issue.priority}`}</span>
       </div>
     </div>
   );
