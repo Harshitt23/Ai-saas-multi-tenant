@@ -5,6 +5,7 @@ import type {
   CreateIssueInput,
   IssueStatusValue,
   MoveIssueInput,
+  UpdateIssueInput,
 } from '@pm/types';
 import { api, uploadAttachment, type Attachment } from './api';
 
@@ -28,6 +29,7 @@ export interface Issue {
   id: string;
   number: number;
   title: string;
+  description: string | null;
   status: IssueStatusValue;
   priority: string;
   rank: string;
@@ -36,7 +38,20 @@ export interface Issue {
   updatedAt: string;
 }
 
+export interface Member {
+  id: string; // membership id
+  role: string;
+  user: { id: string; name: string; email: string; avatarUrl: string | null };
+}
+
 export const useOrgs = () => useQuery({ queryKey: ['orgs'], queryFn: () => api.get<Org[]>('/orgs') });
+
+export const useMembers = (orgSlug: string) =>
+  useQuery({
+    queryKey: ['members', orgSlug],
+    queryFn: () => api.get<Member[]>(`/orgs/${orgSlug}/members`, orgSlug),
+    enabled: !!orgSlug,
+  });
 
 export const useProjects = (orgSlug: string) =>
   useQuery({
@@ -91,6 +106,48 @@ export function useMoveIssue(orgSlug: string, projectKey: string) {
       if (ctx?.previous) qc.setQueryData(key, ctx.previous);
     },
 
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+/** Edit an issue's fields (title/description/status/priority/assignee). */
+export function useUpdateIssue(orgSlug: string, projectKey: string) {
+  const qc = useQueryClient();
+  const key = issuesKey(orgSlug, projectKey);
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateIssueInput }) =>
+      api.patch<Issue>(`/orgs/${orgSlug}/projects/${projectKey}/issues/${id}`, input, orgSlug),
+    onMutate: async ({ id, input }) => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<Issue[]>(key);
+      qc.setQueryData<Issue[]>(key, (old) =>
+        (old ?? []).map((i) => (i.id === id ? { ...i, ...input } : i)),
+      );
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previous) qc.setQueryData(key, ctx.previous);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+/** Delete an issue, removing it from the board cache immediately. */
+export function useDeleteIssue(orgSlug: string, projectKey: string) {
+  const qc = useQueryClient();
+  const key = issuesKey(orgSlug, projectKey);
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.delete<void>(`/orgs/${orgSlug}/projects/${projectKey}/issues/${id}`, orgSlug),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<Issue[]>(key);
+      qc.setQueryData<Issue[]>(key, (old) => (old ?? []).filter((i) => i.id !== id));
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previous) qc.setQueryData(key, ctx.previous);
+    },
     onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 }

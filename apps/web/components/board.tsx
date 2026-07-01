@@ -18,8 +18,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { useDroppable } from '@dnd-kit/core';
 import { useMemo, useState } from 'react';
 import { rankBetween, type IssueStatusValue } from '@pm/types';
-import { useIssues, useMoveIssue, type Issue } from '../lib/hooks';
+import { useIssues, useMembers, useMoveIssue, type Issue } from '../lib/hooks';
 import { useBoardRealtime } from '../lib/use-board-realtime';
+import { IssueDetailModal, NewIssueModal, PRIORITY_DOT } from './issue-modal';
 
 const COLUMNS: { status: IssueStatusValue; label: string }[] = [
   { status: 'BACKLOG', label: 'Backlog' },
@@ -33,9 +34,12 @@ const COL_PREFIX = 'col:';
 
 export function Board({ orgSlug, projectKey }: { orgSlug: string; projectKey: string }) {
   const { data: issues = [] } = useIssues(orgSlug, projectKey);
+  const { data: members = [] } = useMembers(orgSlug);
   const move = useMoveIssue(orgSlug, projectKey);
   const presence = useBoardRealtime(orgSlug, projectKey);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -91,10 +95,19 @@ export function Board({ orgSlug, projectKey }: { orgSlug: string; projectKey: st
   }
 
   const activeIssue = issues.find((i) => i.id === activeId) ?? null;
+  const selectedIssue = issues.find((i) => i.id === selectedId) ?? null;
 
   return (
     <div>
-      <Presence users={presence} />
+      <div className="flex items-center justify-between gap-3 px-4 pt-3">
+        <Presence users={presence} />
+        <button
+          onClick={() => setCreating(true)}
+          className="ml-auto rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+        >
+          + New issue
+        </button>
+      </div>
       <DndContext
         sensors={sensors}
         onDragStart={(e: DragStartEvent) => setActiveId(String(e.active.id))}
@@ -102,11 +115,35 @@ export function Board({ orgSlug, projectKey }: { orgSlug: string; projectKey: st
       >
         <div className="flex gap-4 overflow-x-auto p-4">
           {COLUMNS.map((col) => (
-            <Column key={col.status} status={col.status} label={col.label} issues={byStatus.get(col.status) ?? []} />
+            <Column
+              key={col.status}
+              status={col.status}
+              label={col.label}
+              issues={byStatus.get(col.status) ?? []}
+              onOpen={setSelectedId}
+            />
           ))}
         </div>
         <DragOverlay>{activeIssue ? <Card issue={activeIssue} overlay /> : null}</DragOverlay>
       </DndContext>
+
+      {selectedIssue && (
+        <IssueDetailModal
+          orgSlug={orgSlug}
+          projectKey={projectKey}
+          issue={selectedIssue}
+          members={members}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
+      {creating && (
+        <NewIssueModal
+          orgSlug={orgSlug}
+          projectKey={projectKey}
+          members={members}
+          onClose={() => setCreating(false)}
+        />
+      )}
     </div>
   );
 }
@@ -115,10 +152,12 @@ function Column({
   status,
   label,
   issues,
+  onOpen,
 }: {
   status: IssueStatusValue;
   label: string;
   issues: Issue[];
+  onOpen: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `${COL_PREFIX}${status}` });
   return (
@@ -135,7 +174,7 @@ function Column({
       >
         <SortableContext items={issues.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {issues.map((issue) => (
-            <Card key={issue.id} issue={issue} />
+            <Card key={issue.id} issue={issue} onOpen={onOpen} />
           ))}
         </SortableContext>
       </div>
@@ -143,7 +182,15 @@ function Column({
   );
 }
 
-function Card({ issue, overlay = false }: { issue: Issue; overlay?: boolean }) {
+function Card({
+  issue,
+  overlay = false,
+  onOpen,
+}: {
+  issue: Issue;
+  overlay?: boolean;
+  onOpen?: (id: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: issue.id,
   });
@@ -152,16 +199,23 @@ function Card({ issue, overlay = false }: { issue: Issue; overlay?: boolean }) {
     transition,
     opacity: isDragging && !overlay ? 0.4 : 1,
   };
+  const dot = (PRIORITY_DOT as Record<string, string>)[issue.priority] ?? 'bg-zinc-600';
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className="cursor-grab rounded-md border border-edge bg-zinc-900 p-3 text-sm shadow-sm active:cursor-grabbing"
+      onClick={() => onOpen?.(issue.id)}
+      className="cursor-pointer rounded-md border border-edge bg-zinc-900 p-3 text-sm shadow-sm hover:border-indigo-500/60"
     >
       <p className="text-zinc-100">{issue.title}</p>
-      <p className="mt-1 text-xs text-zinc-500">#{issue.number} · {issue.priority}</p>
+      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-500">
+        <span className={`inline-block h-2 w-2 rounded-full ${dot}`} />
+        <span>#{issue.number}</span>
+        <span>·</span>
+        <span>{issue.priority}</span>
+      </div>
     </div>
   );
 }
