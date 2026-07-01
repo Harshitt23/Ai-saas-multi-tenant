@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useProjects } from '../../lib/hooks';
+import { MembersPanel, NotificationPrefsPanel } from '../../components/org-settings';
 
 export default function OrgPage({ params }: { params: { orgSlug: string } }) {
   const { orgSlug } = params;
@@ -34,6 +35,11 @@ export default function OrgPage({ params }: { params: { orgSlug: string } }) {
         {projects.isLoading && <p className="text-zinc-500">Loading…</p>}
         {projects.data?.length === 0 && <p className="text-zinc-500">No projects yet.</p>}
       </ul>
+
+      <div className="mt-10 grid gap-4 sm:grid-cols-2">
+        <MembersPanel orgSlug={orgSlug} />
+        <NotificationPrefsPanel />
+      </div>
     </main>
   );
 }

@@ -53,6 +53,46 @@ export const useMembers = (orgSlug: string) =>
     enabled: !!orgSlug,
   });
 
+/** Invite a member by email. Returns {status:'added'|'invited'}. */
+export function useInviteMember(orgSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { email: string; role: string }) =>
+      api.post<{ status: string }>(`/orgs/${orgSlug}/members`, input, orgSlug),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['members', orgSlug] }),
+  });
+}
+
+export interface NotificationPrefs {
+  emailOnAssigned: boolean;
+  emailOnMentioned: boolean;
+  emailOnComment: boolean;
+}
+
+export const useNotificationPrefs = () =>
+  useQuery({
+    queryKey: ['notification-prefs'],
+    queryFn: () => api.get<NotificationPrefs>('/notifications/prefs'),
+  });
+
+export function useUpdateNotificationPrefs() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<NotificationPrefs>) =>
+      api.patch<NotificationPrefs>('/notifications/prefs', input),
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: ['notification-prefs'] });
+      const previous = qc.getQueryData<NotificationPrefs>(['notification-prefs']);
+      if (previous) qc.setQueryData(['notification-prefs'], { ...previous, ...input });
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previous) qc.setQueryData(['notification-prefs'], ctx.previous);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['notification-prefs'] }),
+  });
+}
+
 export const useProjects = (orgSlug: string) =>
   useQuery({
     queryKey: ['projects', orgSlug],

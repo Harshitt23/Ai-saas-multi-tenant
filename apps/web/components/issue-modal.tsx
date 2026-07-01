@@ -4,12 +4,16 @@ import { useEffect, useState } from 'react';
 import {
   issuePrioritySchema,
   issueStatusSchema,
+  MAX_ATTACHMENT_BYTES,
   type IssuePriorityValue,
   type IssueStatusValue,
 } from '@pm/types';
 import {
+  useAttachments,
   useCreateIssue,
+  useDeleteAttachment,
   useDeleteIssue,
+  useUploadAttachment,
   useUpdateIssue,
   type Issue,
   type Member,
@@ -84,6 +88,74 @@ function AssigneeOptions({ members }: { members: Member[] }) {
         </option>
       ))}
     </>
+  );
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function AttachmentsSection({ orgSlug, issueId }: { orgSlug: string; issueId: string }) {
+  const { data: files = [] } = useAttachments(orgSlug, issueId);
+  const upload = useUploadAttachment(orgSlug, issueId);
+  const del = useDeleteAttachment(orgSlug, issueId);
+  const [err, setErr] = useState<string | null>(null);
+
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setErr(null);
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setErr('File exceeds the 25 MB limit.');
+      return;
+    }
+    upload.mutate(file, {
+      onError: () => setErr('Upload failed — object storage may not be configured yet.'),
+    });
+  };
+
+  return (
+    <div>
+      <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+        Attachments
+      </span>
+      <ul className="space-y-1">
+        {files.map((f) => (
+          <li
+            key={f.id}
+            className="flex items-center justify-between rounded-md border border-edge bg-surface px-3 py-2 text-sm"
+          >
+            <a
+              href={f.downloadUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="min-w-0 truncate text-indigo-300 hover:underline"
+            >
+              {f.fileName}
+            </a>
+            <span className="ml-3 flex items-center gap-3 text-xs text-zinc-500">
+              <span>{formatSize(f.size)}</span>
+              <button
+                onClick={() => del.mutate(f.id)}
+                className="text-zinc-500 hover:text-red-400"
+                aria-label="Delete attachment"
+              >
+                ✕
+              </button>
+            </span>
+          </li>
+        ))}
+        {files.length === 0 && <li className="text-xs text-zinc-600">No files attached.</li>}
+      </ul>
+      <label className="mt-2 inline-block cursor-pointer text-xs text-indigo-400 hover:text-indigo-300">
+        {upload.isPending ? 'Uploading…' : '+ Attach a file'}
+        <input type="file" className="hidden" onChange={onFile} disabled={upload.isPending} />
+      </label>
+      {err && <p className="mt-1 text-xs text-red-400">{err}</p>}
+    </div>
   );
 }
 
@@ -187,6 +259,8 @@ export function IssueDetailModal({
             placeholder="Add a description…"
           />
         </Field>
+
+        <AttachmentsSection orgSlug={orgSlug} issueId={issue.id} />
       </div>
 
       <div className="flex items-center justify-between border-t border-edge px-5 py-3">

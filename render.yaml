@@ -21,7 +21,12 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @pm/types build && pnpm --filter @pm/db generate && pnpm --filter @pm/db build && pnpm --filter @pm/api build
     # Apply any pending migrations (idempotent) then boot. `migrate deploy`
     # never generates or resets — safe to run on every cold start.
-    startCommand: pnpm --filter @pm/db exec prisma migrate deploy && node apps/api/dist/main.js
+    # Migrations need DDL rights, so they run as the DB owner via
+    # MIGRATE_DATABASE_URL; the app process itself connects with DATABASE_URL,
+    # which in production points at the least-privilege `pm_app` role (subject
+    # to RLS). If MIGRATE_DATABASE_URL is unset, migrations fall back to
+    # DATABASE_URL (fine when it's still the owner).
+    startCommand: DATABASE_URL="${MIGRATE_DATABASE_URL:-$DATABASE_URL}" pnpm --filter @pm/db exec prisma migrate deploy && node apps/api/dist/main.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -31,7 +36,13 @@ services:
       - key: NODE_VERSION
         value: "22.14.0"
       # Secrets — set in the dashboard (Neon / Upstash / R2). Never committed.
+      # DATABASE_URL is the app's runtime connection — point it at the
+      # least-privilege `pm_app` role in production.
       - key: DATABASE_URL
+        sync: false
+      # Owner connection used ONLY for `prisma migrate deploy` (needs DDL).
+      # Leave unset to run migrations as whatever DATABASE_URL is.
+      - key: MIGRATE_DATABASE_URL
         sync: false
       - key: REDIS_URL
         sync: false
