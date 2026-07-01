@@ -29,7 +29,7 @@ services:
       # Pin to Node 22 LTS — the `>=20` engines range otherwise resolves to the
       # newest release (26), which can break native deps (Prisma, bcrypt).
       - key: NODE_VERSION
-        value: "22.11.0"
+        value: "22.14.0"
       # Secrets — set in the dashboard (Neon / Upstash / R2). Never committed.
       - key: DATABASE_URL
         sync: false
